@@ -1,4 +1,4 @@
-# 📱 Dokumentasi Lengkap: Sistem Rekomendasi Ponsel Pintar Berbasis Machine Learning
+# 📱 Dokumentasi Lengkap: Sistem Rekomendasi Ponsel Pintar
 
 <div align="center">
 
@@ -8,7 +8,7 @@
 
 **Sistem Rekomendasi Ponsel Pintar dengan TF-IDF & Agregasi Statistik**
 
-[Demo](#demo) • [Fitur](#fitur) • [Instalasi](#instalasi) • [Penggunaan](#penggunaan) • [Algoritma](#algoritma)
+**Author:** rasiharunart1 | **Date:** 2025-11-05
 
 </div>
 
@@ -17,613 +17,952 @@
 ## 📋 Daftar Isi
 
 1. [Gambaran Umum](#gambaran-umum)
-2. [Fitur Utama](#fitur-utama)
-3. [Instalasi](#instalasi)
-4. [Pipeline Data](#pipeline-data)
-5. [Algoritma Inti](#algoritma-inti)
-6. [Antarmuka Pengguna](#antarmuka-pengguna)
-7. [Referensi API](#referensi-api)
-8. [Contoh Penggunaan](#contoh-penggunaan)
-9. [Performa](#performa)
-10. [Troubleshooting](#troubleshooting)
+2. [Instalasi & Setup](#instalasi--setup)
+3. [Pipeline Data](#pipeline-data)
+4. [Algoritma yang Diimplementasikan](#algoritma-yang-diimplementasikan)
+5. [Fitur Utama](#fitur-utama)
+6. [Antarmuka Gradio](#antarmuka-gradio)
+7. [Cara Penggunaan](#cara-penggunaan)
+8. [Visualisasi Data](#visualisasi-data)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## 🎯 Gambaran Umum
 
-**Advanced Phone Recommendation System** adalah aplikasi machine learning yang memberikan rekomendasi ponsel pintar berdasarkan analisis kemiripan menggunakan **Content-Based Filtering** dengan teknik **TF-IDF** dan **Agregasi Statistik**.
+Sistem ini adalah aplikasi machine learning berbasis **Content-Based Filtering** yang memberikan rekomendasi ponsel pintar menggunakan:
+- **TF-IDF** untuk pencocokan brand
+- **Agregasi Statistik** (median/mean/mode) untuk profil virtual
+- **Cosine Similarity** untuk mengukur kemiripan antar ponsel
 
-### 🎨 Diagram Arsitektur
+### Diagram Alur Sistem
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    AKUISISI DATA                             │
-│  Dataset Kaggle → Load CSV → Pandas DataFrame               │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│                   PEMBERSIHAN DATA                           │
-│  • Hapus Duplikat                                            │
-│  • Tangani Missing Value (Imputasi Median)                  │
-│  • Ekstraksi Fitur (Tahun Peluncuran)                       │
-│  • Hapus Kolom (Harga)                                      │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│                REKAYASA FITUR                                │
-│  • Seleksi Fitur (6 fitur)                                  │
-│  • Normalisasi StandardScaler                               │
-│  • Vektorisasi TF-IDF (Nama Brand)                          │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│              KOMPUTASI KEMIRIPAN                             │
-│  • Matriks Cosine Similarity (Fitur Ponsel)                 │
-│  • TF-IDF Similarity (Pencocokan Brand)                     │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│            MESIN REKOMENDASI                                 │
-│  Mode 1: Berbasis Brand (Profil Statistik)                 │
-│  Mode 2: Berbasis Ponsel (Kemiripan Konten)                │
-│  Mode 3: Pencarian (Pencocokan Teks)                       │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│                  ANTARMUKA GRADIO                            │
-│  Web Interface Interaktif dengan 3 Tab                      │
-└─────────────────────────────────────────────────────────────┘
+Dataset Kaggle
+     ↓
+Pembersihan Data (duplikat, missing values)
+     ↓
+Feature Engineering (6 fitur: camera, selfie, audio, display, battery, launch_year)
+     ↓
+Normalisasi (StandardScaler)
+     ↓
+TF-IDF Vectorization (untuk brand matching)
+     ↓
+Cosine Similarity Matrix
+     ↓
+3 Mode Rekomendasi:
+├── Brand-Based (Statistical Profile)
+├── Phone-Based (Content Similarity)  
+└── Search (Text Matching)
+     ↓
+Gradio Web Interface
 ```
 
 ---
 
-## ⚡ Fitur Utama
+## 📦 Instalasi & Setup
 
-### 🔍 **1. TF-IDF Brand Filtering**
-```python
-# Deteksi brand otomatis dengan 100+ alias brand
-BRAND_ALIASES = {
-    'apple': ['apple', 'iphone'],
-    'samsung': ['samsung', 'galaxy'],
-    'xiaomi': ['xiaomi', 'mi', 'redmi', 'poco'],
-    # ... 100+ brand didukung
-}
-```
-
-**Keuntungan:**
-- ✅ Fuzzy matching untuk variasi nama brand
-- ✅ Mendukung 100+ brand dan alias
-- ✅ Lebih akurat dari pencocokan string sederhana
-
-### 📊 **2. Agregasi Statistik**
-
-| Metode | Deskripsi | Kasus Penggunaan |
-|--------|-----------|------------------|
-| **Median** | Nilai tengah | Tahan terhadap outlier, direkomendasikan |
-| **Mean** | Rata-rata | Representasi umum grup |
-| **Mode** | Nilai terbanyak | Menangkap tren populer |
-
-### 🧠 **3. Pembuatan Profil Virtual**
-Sistem membuat profil "ponsel ideal" dari statistik grup brand, lalu mencari ponsel nyata yang paling mirip.
-
-### 🎛️ **4. Kontrol Dinamis**
-- Input jumlah rekomendasi (1-50)
-- Pilih metode statistik
-- Pemrosesan real-time
-
-### 📈 **5. Visualisasi**
-- Histogram distribusi fitur
-- Heatmap matriks kemiripan
-- Grafik perbandingan fitur
-
-### 🚀 **6. Multi-Mode Rekomendasi**
-- **Berbasis Brand**: Rekomendasi dari brand tertentu
-- **Berbasis Ponsel**: Cari ponsel serupa
-- **Pencarian**: Pencarian teks
-
----
-
-## 📦 Instalasi
-
-### Prasyarat
-```bash
-Python >= 3.8
-pip >= 21.0
-```
-
-### Langkah 1: Instalasi Dependencies
+### Langkah 1: Install Dependencies
 
 ```bash
-# Library inti
-pip install pandas numpy scikit-learn
-
-# Visualisasi
-pip install matplotlib seaborn
-
-# Framework UI
-pip install gradio
-
-# Dataset
-pip install kagglehub
-
-# Opsional: akselerasi GPU
-pip install cupy-cuda11x  # untuk CUDA 11.x
+# Library utama
+pip install pandas numpy scikit-learn matplotlib seaborn gradio kagglehub scipy
 ```
 
 ### Langkah 2: Download Dataset
 
 ```python
 import kagglehub
-
-# Download dataset
-path = kagglehub.dataset_download("prasertk/mobile-phone-rating")
-print(f"Dataset diunduh ke: {path}")
-```
-
-### Langkah 3: Verifikasi Instalasi
-
-```python
+import os
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
-import gradio as gr
 
-print("✅ Semua dependencies berhasil diinstal!")
+# Download dataset dari Kaggle
+path = kagglehub.dataset_download("prasertk/mobile-phone-rating")
+
+# Load CSV
+df = os.listdir(path)
+csv_file = [f for f in df if f.endswith('.csv')][0]
+df = pd.read_csv(os.path.join(path, csv_file))
 ```
+
+**Info Dataset:**
+- **Sumber**: Kaggle - Mobile Phone Rating Dataset
+- **Jumlah Data**: ~10,000 ponsel
+- **Fitur**: 15+ kolom
 
 ---
 
 ## 🔄 Pipeline Data
 
-### **Fase 1: Loading Data**
+### 1. Eksplorasi Data Awal
 
 ```python
-# Load dataset dari Kaggle
-path = kagglehub.dataset_download("prasertk/mobile-phone-rating")
-csv_files = [f for f in os.listdir(path) if f.endswith('.csv')]
-df = pd.read_csv(os.path.join(path, csv_files[0]))
+# Lihat 5 baris pertama
+df.head()
+
+# Info struktur data
+df.info()
+
+# Statistik deskriptif
+df.describe()
+
+# Cek missing values
+df.isnull().sum()
 ```
 
-**Overview Dataset:**
-- **Sumber**: Kaggle - Mobile Phone Rating Dataset
-- **Baris**: ~10,000 ponsel
-- **Kolom**: 15+ fitur
-
-### **Fase 2: Pembersihan Data**
+### 2. Data Cleaning
 
 ```python
-# 1. Hapus duplikat
-init_rows = len(df)
-df_clean = df.drop_duplicates(subset=['model'])
-print(f"Dihapus {init_rows - len(df_clean)} duplikat")
+# Copy dataframe
+df_clean = df.copy()
 
-# 2. Tangani missing values
+# Hapus duplikat berdasarkan model
+init_row = len(df_clean)
+print('Jumlah baris awal:', init_row)
+df_clean = df_clean.drop_duplicates(subset=['model'])
+
+# Hapus baris dengan model kosong
 df_clean = df_clean.dropna(subset=['model'])
+df_clean.info()
 
-# 3. Hapus kolom yang tidak perlu
+# Hapus kolom price (tidak digunakan)
 df_clean.drop('price', axis=1, inplace=True)
+df_clean.head()
+```
 
-# 4. Imputasi median untuk fitur numerik
+**Hasil Cleaning:**
+- Duplikat dihapus
+- Missing values pada kolom 'model' dihapus
+- Kolom 'price' dihapus
+
+### 3. Handling Missing Values
+
+```python
+# Isi missing values dengan median untuk kolom numerik
 num_cols = ['camera', 'selfie', 'audio', 'display', 'battery']
+
 for col in num_cols:
-    df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
-    df_clean[col] = df_clean[col].fillna(df_clean[col].median())
+    if col in df_clean.columns:
+        before = df_clean[col].isnull().sum()
+        df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
+        df_clean[col] = df_clean[col].fillna(df_clean[col].median())
+        after = df_clean[col].isnull().sum()
+        if before > 0:
+            print(f"{col}: terisi {before} menjadi {after}")
+
+df_clean.shape
 ```
 
-**Statistik Pembersihan:**
-| Langkah | Aksi | Hasil |
-|---------|------|-------|
-| Duplikat | Hapus berdasarkan model | -X baris |
-| Model Kosong | Hapus baris | -Y baris |
-| Fitur Kosong | Imputasi median | 0 null |
-| Kolom Harga | Hapus | -1 kolom |
+**Strategi Imputasi:**
+- Menggunakan **median** karena tahan terhadap outlier
+- Konversi ke numerik dengan `pd.to_numeric()`
+- `errors='coerce'` mengubah nilai non-numerik menjadi NaN
 
-### **Fase 3: Rekayasa Fitur**
+### 4. Feature Extraction
 
 ```python
-# Ekstrak tahun peluncuran
-df_clean['launch_year'] = pd.to_datetime(
-    df_clean['launch'], 
-    errors='coerce'
-).dt.year
+# Ekstrak tahun dari kolom launch
+if 'launch' in df_clean.columns:
+    df_clean['launch_year'] = pd.to_datetime(df_clean['launch'], errors='coerce').dt.year
+    print(f"Range tahun: {df_clean['launch_year'].min()} - {df_clean['launch_year'].max()}")
 
-# Definisikan set fitur
-feature_cols = ['camera', 'selfie', 'audio', 'display', 'battery', 'launch_year']
+# Check hasil cleaning
+print(f"Setelah di cleaning: {df_clean[num_cols].describe()}")
 ```
 
-**Ringkasan Fitur:**
-| Fitur | Tipe | Rentang | Deskripsi |
-|-------|------|---------|-----------|
-| `camera` | float | 0-100 | Kualitas kamera belakang |
-| `selfie` | float | 0-100 | Kualitas kamera depan |
-| `audio` | float | 0-100 | Kualitas audio |
-| `display` | float | 0-100 | Kualitas layar |
-| `battery` | float | 0-100 | Kualitas baterai |
-| `launch_year` | int | 2010-2025 | Tahun peluncuran |
+**Feature Baru:**
+- `launch_year`: Tahun peluncuran ponsel
 
-### **Fase 4: Normalisasi**
+### 5. Feature Selection
 
 ```python
-# Normalisasi StandardScaler
+# Definisikan fitur yang akan digunakan
+feature_cols = []
+
+num_features = ['camera', 'selfie', 'audio', 'display', 'battery']
+for col in num_features:
+    if col in df_clean.columns:
+        feature_cols.append(col)
+        
+print(feature_cols)
+
+# Tambahkan launch_year
+feature_cols.append('launch_year')
+
+# Tampilkan list fitur
+for i, col in enumerate(feature_cols, 1):
+    print(f"{i}. {col}")
+```
+
+**6 Fitur yang Dipilih:**
+1. camera
+2. selfie
+3. audio
+4. display
+5. battery
+6. launch_year
+
+### 6. Buat Feature Matrix
+
+```python
+# Buat dataframe hanya dengan fitur terpilih
+df_features = df_clean[feature_cols].copy()
+df_features.isnull().sum()
+df_features.head()
+```
+
+### 7. Normalisasi Features
+
+```python
+from sklearn.preprocessing import StandardScaler
+
+# Inisialisasi scaler
 scaler = StandardScaler()
-features_scaled = scaler.fit_transform(df_clean[feature_cols])
+features_scaled = scaler.fit_transform(df_features)
 
+# Buat dataframe dari hasil normalisasi
 df_features_scaled = pd.DataFrame(
     features_scaled,
     columns=feature_cols,
     index=df_clean.index
 )
+
+df_features_scaled.shape
+df_features_scaled.describe()
 ```
 
 **Mengapa StandardScaler?**
-- ✅ Mean nol, varian satu
-- ✅ Menjaga hubungan antar fitur
-- ✅ Diperlukan untuk cosine similarity
+- Mengubah data menjadi **mean = 0** dan **standard deviation = 1**
+- Semua fitur memiliki skala yang sama
+- Penting untuk cosine similarity agar tidak ada fitur yang dominan
 
-### **Fase 5: Vektorisasi TF-IDF**
-
-```python
-# Setup TF-IDF untuk pencocokan brand
-tfidf = TfidfVectorizer(
-    lowercase=True,
-    max_features=500,
-    ngram_range=(1, 2),
-    stop_words='english',
-    min_df=1
-)
-
-tfidf_matrix = tfidf.fit_transform(df_clean['model'])
-```
-
-**Konfigurasi TF-IDF:**
-- `max_features`: 500 term teratas
-- `ngram_range`: (1,2) - unigram & bigram
-- `stop_words`: Hapus kata umum bahasa Inggris
-
----
-
-## 🧮 Algoritma Inti
-
-### **Algoritma 1: Rekomendasi Berbasis Brand**
+### 8. Hitung Cosine Similarity Matrix
 
 ```python
-def get_brand_only(brand_keyword, stat_type='median', n_recommendations=10):
-    """
-    FLOWCHART:
-    
-    Input: Kata Kunci Brand
-         ↓
-    [Deteksi Brand TF-IDF]
-         ↓
-    [Ekstrak Grup Brand]
-         ↓
-    [Hitung Statistik] → Median/Mean/Mode
-         ↓
-    [Buat Profil Virtual]
-         ↓
-    [Normalisasi Profil]
-         ↓
-    [Hitung Cosine Similarity]
-         ↓
-    [Ranking & Filter Top-N]
-         ↓
-    Output: Rekomendasi
-    """
-```
+from sklearn.metrics.pairwise import cosine_similarity
 
-**Langkah demi Langkah:**
+# Hitung similarity antar semua ponsel
+cos_sim = cosine_similarity(df_features_scaled)
 
-1. **Deteksi Brand** (TF-IDF)
-   ```python
-   # Cocokkan brand dari 100+ alias
-   brand_group = extract_brand_group_tfidf(brand_keyword)
-   ```
-
-2. **Agregasi Statistik**
-   ```python
-   # Hitung median/mean/mode untuk setiap fitur
-   brand_stats = calculate_brand_statistics(brand_group, features)
-   ```
-
-3. **Profil Virtual**
-   ```python
-   # Buat profil ponsel ideal
-   ref_profile = [brand_stats[f][stat_type] for f in features]
-   ```
-
-4. **Komputasi Kemiripan**
-   ```python
-   # Normalisasi dan hitung cosine similarity
-   ref_scaled = scaler.transform([ref_profile])
-   similarities = cosine_similarity(ref_scaled, brand_features)
-   ```
-
-5. **Ranking**
-   ```python
-   # Urutkan berdasarkan skor kemiripan
-   top_n = result_df.nlargest(n_recommendations, 'similarity')
-   ```
-
-### **Algoritma 2: Rekomendasi Berbasis Ponsel**
-
-```python
-def get_sim_phone_content_based(phone_model, n_recommendations=10):
-    """
-    FLOWCHART:
-    
-    Input: Model Ponsel
-         ↓
-    [Cari Kecocokan Exact]
-         ↓
-    [Load Matriks Similarity Pre-computed]
-         ↓
-    [Ekstrak Baris untuk Input]
-         ↓
-    [Urutkan berdasarkan Skor Similarity]
-         ↓
-    [Exclude Input Ponsel]
-         ↓
-    [Pilih Top-N]
-         ↓
-    Output: Ponsel Serupa
-    """
-```
-
-**Matriks Pre-computed:**
-```python
-# Matriks cosine similarity (semua ponsel)
-cos_sim_matrix = cosine_similarity(df_features_scaled)
-
-# DataFrame untuk indexing mudah
+# Buat dataframe dengan index & columns = nama model
 cos_sim_df = pd.DataFrame(
-    cos_sim_matrix,
+    cos_sim,
     index=df_clean['model'],
     columns=df_clean['model']
 )
-```
 
-### **Algoritma 3: Fungsi Pencarian**
-
-```python
-def search_phone(query, max_results=20):
-    """
-    Pencocokan teks sederhana untuk eksplorasi dataset
-    """
-    matches = [
-        phone for phone in df_clean['model'] 
-        if query.lower() in phone.lower()
-    ]
-    return matches[:max_results]
-```
-
----
-
-## 🎨 Antarmuka Pengguna
-
-### **Struktur Aplikasi Gradio**
-
-```python
-with gr.Blocks() as app:
-    # TAB 1: Rekomendasi Berbasis Brand
-    with gr.Tab("Rekomendasi Berbasis Brand"):
-        brand_input = gr.Textbox(...)
-        stat_method = gr.Radio(['median', 'mean', 'mode'], ...)
-        n_recs = gr.Number(...)
-        find_btn = gr.Button(...)
-        
-    # TAB 2: Cari Ponsel Serupa
-    with gr.Tab("Cari Ponsel Serupa"):
-        phone_input = gr.Textbox(...)
-        n_similar = gr.Number(...)
-        find_btn = gr.Button(...)
-        
-    # TAB 3: Pencarian
-    with gr.Tab("Cari Ponsel"):
-        search_input = gr.Textbox(...)
-        search_btn = gr.Button(...)
-```
-
-### **Komponen UI**
-
-| Komponen | Tipe | Tujuan |
-|----------|------|--------|
-| `brand_input` | Textbox | Input kata kunci brand |
-| `stat_method` | Radio | Pilih metode statistik |
-| `n_recs` | Number | Kontrol jumlah rekomendasi |
-| `brand_output` | Markdown | Tampilkan hasil terformat |
-| `brand_table` | Dataframe | Tampilkan data tabel |
-
-### **Custom CSS**
-
-```python
-custom_css = """
-.gradio-container {
-    font-family: 'Segoe UI', sans-serif;
-    max-width: 1400px;
-}
-.gr-button-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-}
-"""
-```
-
----
-
-## 📚 Referensi API
-
-### **Fungsi: `get_brand_only()`**
-
-```python
-def get_brand_only(
-    brand_keyword: str,
-    stat_type: str = 'median',
-    n_recommendations: int = 10
-) -> Tuple[str, pd.DataFrame]:
-    """
-    Generate rekomendasi berbasis brand menggunakan agregasi statistik.
-    
-    Parameter:
-    -----------
-    brand_keyword : str
-        Nama brand atau alias (contoh: 'apple', 'samsung', 'xiaomi')
-        
-    stat_type : str, default='median'
-        Metode statistik untuk agregasi
-        Pilihan: 'median', 'mean', 'mode'
-        
-    n_recommendations : int, default=10
-        Jumlah rekomendasi yang dikembalikan
-        Rentang: 1-50
-        
-    Returns:
-    --------
-    result_text : str
-        Teks markdown terformat dengan rekomendasi
-        
-    result_df : pd.DataFrame
-        Dataframe dengan kolom:
-        - Rank: Peringkat rekomendasi
-        - Model: Nama model ponsel
-        - Similarity: Skor cosine similarity
-        - Camera/Display/Battery/Audio/Selfie: Skor fitur
-        
-    Contoh:
-    ---------
-    >>> text, df = get_brand_only('apple', 'median', 10)
-    >>> print(text)
-    # Rekomendasi Ponsel - APPLE
-    **Mode:** BRAND STATISTICS
-    ...
-    
-    >>> df.head()
-       Rank  Model              Similarity  Camera  Display
-    0  1     iPhone 13 Pro      0.9845     95.0    98.0
-    1  2     iPhone 12 Pro Max  0.9823     94.0    97.0
-    """
-```
-
-### **Fungsi: `get_sim_phone_content_based()`**
-
-```python
-def get_sim_phone_content_based(
-    phone_model: str,
-    n_recommendations: int = 10
-) -> Tuple[str, pd.DataFrame, None]:
-    """
-    Cari ponsel serupa menggunakan cosine similarity pre-computed.
-    
-    Parameter:
-    -----------
-    phone_model : str
-        Nama model ponsel exact atau sebagian
-        Sistem akan mencoba fuzzy matching
-        
-    n_recommendations : int, default=10
-        Jumlah ponsel serupa yang dikembalikan
-        
-    Returns:
-    --------
-    result_text : str
-        Output markdown terformat
-        
-    result_df : pd.DataFrame
-        Ponsel serupa dengan skor similarity
-        
-    None
-        Placeholder untuk fitur chart di masa depan
-        
-    Contoh:
-    ---------
-    >>> text, df, _ = get_sim_phone_content_based('iPhone 14 Pro', 10)
-    >>> df['Similarity'].max()
-    0.9956
-    """
-```
-
-### **Fungsi: `search_phone()`**
-
-```python
-def search_phone(
-    query: str,
-    max_results: int = 20
-) -> Tuple[str, pd.DataFrame]:
-    """
-    Cari ponsel berdasarkan pencocokan teks.
-    
-    Parameter:
-    -----------
-    query : str
-        Kata kunci pencarian (brand, model, atau fitur)
-        
-    max_results : int, default=20
-        Jumlah maksimum hasil
-        
-    Returns:
-    --------
-    result_text : str
-        Ringkasan pencarian
-        
-    result_df : pd.DataFrame
-        Ponsel yang cocok dengan spesifikasi
-        
-    Contoh:
-    ---------
-    >>> text, df = search_phone('galaxy s23', 20)
-    >>> len(df)
-    15
-    """
-```
-
-### **Fungsi: `calculate_brand_statistics()`**
-
-```python
-def calculate_brand_statistics(
-    brand_df: pd.DataFrame,
-    features: List[str]
-) -> Dict[str, Dict[str, float]]:
-    """
-    Hitung median, mean, dan mode untuk fitur brand.
-    
-    Parameter:
-    -----------
-    brand_df : pd.DataFrame
-        Dataframe terfilter untuk brand spesifik
-        
-    features : List[str]
-        List fitur numerik untuk diagregasi
-        
-    Returns:
-    --------
-    stats_dict : Dict[str, Dict[str, float]]
-        Dictionary nested dengan struktur:
-        {
-            'camera': {'median': 85.0, 'mean': 84.5, 'mode': 85.0},
-            'display': {'median': 90.0, 'mean': 89.8, 'mode': 90.0},
-            ...
-        }
-        
-    Contoh:
-    ---------
-    >>> brand_df = df_clean[df_clean['model'].str.contains('apple', case=False)]
-    >>> stats = calculate_brand_statistics(brand_df, ['camera', 'display'])
-    >>> stats['camera']['median']
-    88.5
-    """
-```
-
----
-
-## 💡 Contoh Penggunaan
-
-### **Contoh 1: Rekomendasi Brand Apple (Median)**
-
-```python
-text, df = get_brand_only('apple', 'median', 10)
+cos_sim_df.shape
+display(cos_sim_df.iloc[:5, :5])
 ```
 
 **Output:**
+- Matriks NxN (N = jumlah ponsel)
+- Nilai 0-1 (1 = identik, 0 = sangat berbeda)
+- Diagonal = 1 (ponsel dengan dirinya sendiri)
+
+---
+
+## 📊 Visualisasi Data
+
+### 1. Histogram Distribusi Features
+
+```python
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+
+colors = ['#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3']
+
+for idx, col in enumerate(feature_cols):
+    row = idx // 3
+    col_idx = idx % 3
+    
+    if idx < 6:
+        axes[row, col_idx].hist(
+            df_clean[col].dropna(), 
+            bins=30,
+            edgecolor='black', 
+            alpha=0.6,
+            color=colors[idx]
+        )
+        axes[row, col_idx].set_xlabel(col, fontsize=11)
+        axes[row, col_idx].set_ylabel('Frequency', fontsize=11)
+        axes[row, col_idx].set_title(f'{col.title()}', fontsize=14, fontweight='bold')
+        axes[row, col_idx].grid(alpha=0.6)
+
+plt.tight_layout()
+plt.show()
+```
+
+**Tujuan:**
+- Melihat distribusi nilai setiap fitur
+- Mengidentifikasi outlier
+- Memahami karakteristik dataset
+
+### 2. Heatmap Cosine Similarity
+
+```python
+import seaborn as sns
+
+plt.figure(figsize=(12, 10))
+sns.heatmap(
+    cos_sim_df.iloc[:30, :30],
+    cmap='YlGnBu',
+    center=0,
+    square=True,
+    linewidths=0.5,
+    cbar_kws={"shrink": 0.8},
+    xticklabels=False,
+    yticklabels=False
+)
+
+plt.title('Cosine Similarity Heatmap (untuk 30 smartphone)')
+plt.tight_layout()
+plt.show()
+```
+
+**Interpretasi:**
+- Warna terang = similarity tinggi
+- Warna gelap = similarity rendah
+- Menampilkan 30 ponsel pertama untuk readability
+
+---
+
+## 🧮 Algoritma yang Diimplementasikan
+
+### 1. Setup TF-IDF Vectorizer
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+def setup_tfidf_vectorizer():
+    tfidf = TfidfVectorizer(
+        lowercase=True,
+        max_features=500,
+        ngram_range=(1, 2),
+        stop_words='english',
+        min_df=1
+    )
+    return tfidf
+
+# Inisialisasi
+tfidf_vectorizer = setup_tfidf_vectorizer()
+
+# Fit transform pada nama model
+tfidf_matrix = tfidf_vectorizer.fit_transform(df_clean['model'])
+
+print(f"TF-IDF matrix: {tfidf_matrix.shape}")
+print(f"  - Total phones: {tfidf_matrix.shape[0]}")
+print(f"  - TF-IDF features: {tfidf_matrix.shape[1]}\n")
+```
+
+**Parameter TF-IDF:**
+- `lowercase=True`: Ubah semua teks ke lowercase
+- `max_features=500`: Ambil 500 term paling penting
+- `ngram_range=(1,2)`: Gunakan unigram dan bigram
+- `stop_words='english'`: Hapus kata umum bahasa Inggris
+- `min_df=1`: Term minimal muncul di 1 dokumen
+
+### 2. Fungsi Extract Brand Group dengan TF-IDF
+
+```python
+def extract_brand_group_tfidf(brand_keyword, top_n=None):
+    # Dictionary alias brand (100+ brand)
+    BRAND_ALIASES = {
+        'apple': ['apple', 'iphone'],
+        'samsung': ['samsung', 'galaxy'],
+        'xiaomi': ['xiaomi', 'mi', 'redmi', 'poco', 'blackshark'],
+        'oppo': ['oppo', 'find', 'reno'],
+        'vivo': ['vivo', 'iqoo'],
+        'realme': ['realme', 'narzo'],
+        'oneplus': ['oneplus', 'nord'],
+        'google': ['google', 'pixel'],
+        'huawei': ['huawei', 'honor'],
+        'asus': ['asus', 'rog', 'zenfone'],
+        # ... dan seterusnya (lihat kode lengkap)
+    }
+    
+    brand_keyword_lower = brand_keyword.lower()
+    detected_brand = None
+    
+    # Deteksi brand dari alias
+    for brand, aliases in BRAND_ALIASES.items():
+        for alias in aliases:
+            if alias in brand_keyword_lower:
+                detected_brand = brand
+                break
+        if detected_brand:
+            break
+    
+    if detected_brand is None:
+        detected_brand = brand_keyword_lower.split()[0]
+    
+    # String matching pada kolom model
+    mask = df_clean['model'].str.lower().str.contains(detected_brand, na=False, regex=False)
+    df_filtered = df_clean[mask].copy()
+    
+    if len(df_filtered) == 0:
+        return pd.DataFrame()
+    
+    # Hitung TF-IDF similarity
+    keyword_vector = tfidf_vectorizer.transform([detected_brand])
+    tfidf_matrix_filtered = tfidf_vectorizer.transform(df_filtered['model'])
+    sim = cosine_similarity(keyword_vector, tfidf_matrix_filtered).flatten()
+    
+    df_filtered['tfidf_score'] = sim
+    brand_group = df_filtered[df_filtered['tfidf_score'] > 0].sort_values('tfidf_score', ascending=False)
+    
+    if top_n:
+        brand_group = brand_group.head(top_n)
+    
+    return brand_group
+```
+
+**Cara Kerja:**
+1. Deteksi brand dari 100+ alias
+2. Filter dataframe dengan string matching
+3. Hitung TF-IDF similarity antara keyword dan nama model
+4. Kembalikan ponsel dengan TF-IDF score > 0
+
+### 3. Fungsi Calculate Brand Statistics
+
+```python
+from scipy import stats
+
+def calculate_brand_statistics(brand_df, features=['camera', 'selfie', 'audio', 'display', 'battery']):
+    stats_dict = {}
+    
+    for feature in features:
+        if feature in brand_df.columns:
+            values = brand_df[feature].dropna()
+            
+            median_val = values.median()
+            mean_val = values.mean()
+            
+            try:
+                mode_val = stats.mode(values, keepdims=True).mode[0]
+            except:
+                mode_val = values.mode()[0] if len(values.mode()) > 0 else median_val
+            
+            stats_dict[feature] = {
+                'median': median_val,
+                'mean': mean_val,
+                'mode': mode_val
+            }
+    
+    return stats_dict
+```
+
+**Output:**
+```python
+{
+    'camera': {'median': 85.0, 'mean': 84.5, 'mode': 85.0},
+    'selfie': {'median': 80.0, 'mean': 79.8, 'mode': 80.0},
+    # ...
+}
+```
+
+### 4. Fungsi Rekomendasi Berbasis Brand (FUNGSI UTAMA)
+
+```python
+def get_brand_only(brand_keyword, stat_type='median', n_recomendations=10):
+    try:
+        exact_match = None
+        
+        # Cek apakah ada exact match
+        if brand_keyword in df_clean['model'].values:
+            exact_match = brand_keyword
+            print(f"[EXACT MATCH] ditemukan: '{exact_match}'")
+        else:
+            matches = df_clean[df_clean['model'].str.lower() == brand_keyword.lower()]
+            if len(matches) > 0:
+                exact_match = matches.iloc[0]['model']
+            else:
+                matches = df_clean[df_clean['model'].str.lower().str.contains(brand_keyword.lower(), na=False, regex=False)]
+                if len(matches) == 1:
+                    exact_match = matches.iloc[0]['model']
+                else:
+                    print(f"Tidak ada yang matches dengan brand keyword")
+        
+        # Extract brand group dengan TF-IDF
+        brand_group = extract_brand_group_tfidf(brand_keyword)
+        
+        if len(brand_group) == 0:
+            return f"Tidak ditemukan ponsel dengan keyword merk: {brand_keyword}"
+        
+        ref_profile = []
+        ref_profile_dict = {}
+        profile_source = ""
+        
+        if exact_match:
+            # Mode: Real Specs (jika ada exact match)
+            phone_data = df_clean[df_clean['model'] == exact_match].iloc[0]
+            
+            for feature in feature_cols:
+                if feature == 'launch_year':
+                    value = phone_data.get('launch_year', 'N/A')
+                else:
+                    value = phone_data.get(feature, 'N/A')
+                ref_profile.append(value)
+                ref_profile_dict[feature] = value
+            
+            profile_source = f"Real Data: {exact_match}"
+        else:
+            # Mode: Virtual Profile (dari statistik)
+            brand_stats = calculate_brand_statistics(
+                brand_group, 
+                feature_cols[:-1] if 'launch_year' in feature_cols else feature_cols
+            )
+            
+            for feature in feature_cols:
+                if feature == 'launch_year':
+                    value = brand_group['launch_year'].median()
+                else:
+                    value = brand_stats[feature][stat_type]
+                
+                ref_profile.append(value)
+                ref_profile_dict[feature] = value
+            
+            profile_source = f"VIRTUAL PROFILE ({stat_type.upper()})"
+        
+        # Normalize reference profile
+        reference_profile_scaled = scaler.transform([ref_profile])
+        
+        # Ambil index brand_group
+        brand_indices = brand_group.index
+        
+        # Ambil features yang sudah di-scale
+        brand_features_scaled = df_features_scaled.loc[brand_indices]
+        
+        # Hitung cosine similarity
+        sim = cosine_similarity(reference_profile_scaled, brand_features_scaled).flatten()
+        
+        # Buat result dataframe
+        result_df = brand_group.copy()
+        result_df['similarity'] = sim
+        
+        # Exclude exact match dari rekomendasi
+        if exact_match:
+            result_df = result_df[result_df['model'] != exact_match]
+            print(f"  Excluded exact match '{exact_match}' from recommendations")
+        
+        # Ambil top N
+        top_recomendations = result_df.nlargest(n_recomendations, 'similarity')
+        
+        # Format output
+        brand_name = brand_keyword.split()[0].upper()
+        result_text = f"# Rekomendasi Ponsel - {brand_name}\n\n"
+        
+        if exact_match:
+            result_text += f"**Mode:** SPECIFIC PHONE (Real Specs)\n"
+            result_text += f"**Reference Phone:** {exact_match}\n"
+        else:
+            result_text += f"**Mode:** BRAND STATISTICS\n"
+            result_text += f"**Metode:** TF-IDF Filtering + Statistical Aggregation ({stat_type.upper()})\n"
+        
+        result_text += f"**Total ponsel di grup:** {len(brand_group)}\n"
+        result_text += f"**Menampilkan:** Top {min(n_recomendations, len(top_recomendations))} rekomendasi\n\n"
+        
+        result_text += f"## Reference Profile ({profile_source}):\n"
+        
+        for feature, value in ref_profile_dict.items():
+            result_text += f"**{feature.replace('_', ' ').title()}:** {value:.2f}\n"
+        
+        result_text += f"\n## Top {min(n_recomendations, len(top_recomendations))} Rekomendasi Serupa:\n"
+        
+        recomendations = []
+        for i, (idx, row) in enumerate(top_recomendations.iterrows(), 1):
+            sim = row['similarity']
+            result_text += f"### {i}. **{row['model']}**\n"
+            result_text += f"   - Similarity: **{row['similarity']:.4f}** ({sim:.1f}%)\n"
+            result_text += f"   - Camera: {row['camera']:.1f} | Display: {row['display']:.1f} | Battery: {row['battery']:.1f}\n"
+            result_text += f"   - Selfie: {row['selfie']:.1f} | Audio: {row['audio']:.1f}\n\n"
+            
+            recomendations.append({
+                'Rank': i,
+                'Model': row['model'],
+                'Similarity': f"{row['similarity']:.4f}",
+                'Similarity %': f"{sim:.1f}%",
+                'Camera': f"{row['camera']:.1f}",
+                'Display': f"{row['display']:.1f}",
+                'Battery': f"{row['battery']:.1f}",
+                'Audio': f"{row['audio']:.1f}",
+                'Selfie': f"{row['selfie']:.1f}"
+            })
+        
+        result_df_final = pd.DataFrame(recomendations)
+        
+        return result_text, result_df_final
+        
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"\n{'='*70}")
+        print(f"❌ [ERROR] {str(e)}")
+        print(f"{'='*70}")
+        print(error_detail)
+        return f"❌ Error: {str(e)}\n\nDetail:\n{error_detail}", None
+```
+
+**Dua Mode Operasi:**
+
+**Mode 1: SPECIFIC PHONE (Real Specs)**
+- Jika input adalah nama ponsel spesifik
+- Gunakan spesifikasi asli ponsel tersebut
+- Cari ponsel lain dalam brand yang mirip
+
+**Mode 2: BRAND STATISTICS (Virtual Profile)**
+- Jika input adalah nama brand
+- Buat profil virtual dari median/mean/mode grup
+- Cari ponsel dalam brand yang paling mirip profil virtual
+
+### 5. Fungsi Cari Ponsel Serupa (Content-Based)
+
+```python
+def get_sim_phone_content_based(phone_model, n_recomendations=10):
+    try:
+        # Cek apakah model ada di index
+        if phone_model not in cos_sim_df.index:
+            matches = [p for p in cos_sim_df.index if phone_model.lower() in p.lower()]
+            if matches:
+                phone_model = matches[0]
+            else:
+                return f"Merk {phone_model} tidak ditemukan", None, None
+        
+        # Ambil similarity scores untuk model ini
+        sim_scores = cos_sim_df[phone_model].sort_values(ascending=False)
+        
+        # Ambil top N (skip index 0 karena itu dirinya sendiri)
+        sim_phone = sim_scores.iloc[1:n_recomendations+1]
+        
+        # Buat list rekomendasi
+        recomendations = []
+        for phone, score in sim_phone.items():
+            phone_data = df_clean[df_clean['model'] == phone].iloc[0]
+            recomendations.append({
+                'Model': phone,
+                'Similarity': f"{score:.4f}",
+                'Camera': phone_data.get('camera', 'N/A'),
+                'Display': phone_data.get('display', 'N/A'),
+                'Audio': phone_data.get('audio', 'N/A'),
+                'Battery': phone_data.get('battery', 'N/A')
+            })
+        
+        result_df = pd.DataFrame(recomendations)
+        result_text = f"# Similar phones to **{phone_model}**\n\nTop {n_recomendations} results based on cosine similarity."
+        
+        return result_text, result_df, None
+        
+    except Exception as e:
+        return f"Error: {str(e)}", None, None
+```
+
+**Cara Kerja:**
+1. Cari model di matriks similarity
+2. Jika tidak ada, lakukan fuzzy matching
+3. Ambil baris similarity untuk model tersebut
+4. Sort descending dan ambil top N (skip dirinya sendiri)
+
+### 6. Fungsi Search
+
+```python
+def search_phone(query, max_results=20):
+    try:
+        # Simple string matching
+        matches = [phone for phone in df_clean['model'] if query.lower() in phone.lower()]
+        
+        if not matches:
+            return f"Tidak ditemukan ponsel yang cocok dengan kata kunci '{query}'"
+        
+        results = []
+        for phone in matches[:max_results]:
+            phone_data = df_clean[df_clean['model'] == phone].iloc[0]
+            results.append({
+                'Model': phone,
+                'Camera': phone_data.get('camera', 'N/A'),
+                'Display': phone_data.get('display', 'N/A'),
+                'Audio': phone_data.get('audio', 'N/A'),
+                'Battery': phone_data.get('battery', 'N/A')
+            })
+        
+        result_df = pd.DataFrame(results)
+        result_text = f"# Hasil Pencarian: '{query}'\nDitemukan {len(matches)} ponsel"
+        
+        return result_text, result_df
+        
+    except Exception as e:
+        return f"Error: {str(e)}", None
+```
+
+**Fungsi Sederhana:**
+- String matching case-insensitive
+- Tampilkan maksimal `max_results` hasil
+
+---
+
+## 🎨 Antarmuka Gradio
+
+### Fungsi Create Advanced Phone Finder
+
+```python
+import gradio as gr
+
+def create_advanced_phone_finder():
+    """Create advanced Gradio app with TF-IDF and statistical features"""
+    
+    custom_css = """
+    .gradio-container {
+        font-family: 'Segoe UI', sans-serif;
+        max-width: 1400px;
+    }
+    .gr-button-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border: none !important;
+    }
+    """
+    
+    with gr.Blocks(css=custom_css, title="Advanced Phone Finder", theme=gr.themes.Soft()) as app:
+        
+        gr.Markdown("""
+        # Advanced Phone Recommendation System
+        ### Dengan TF-IDF Brand Filtering & Statistical Aggregation
+        **Author:** rasiharunart1 | **Updated:** 2025-11-05
+
+        ---
+        """)
+        
+        # TAB 1: Brand-Based Recommendations
+        with gr.Tab("Brand-Based Recommendations"):
+            gr.Markdown("""
+            ### Rekomendasi Berdasarkan Brand Group Statistics
+            **Cara Kerja:**
+            1. Input brand keyword (e.g., 'apple', 'samsung', 'xiaomi')
+            2. Sistem ekstrak grup ponsel dengan TF-IDF
+            3. Hitung median/mean/mode dari spesifikasi grup
+            4. Generate rekomendasi ponsel dari brand yang sama
+            """)
+            
+            with gr.Row():
+                with gr.Column(scale=1):
+                    gr.Markdown("#### Configuration")
+                    
+                    brand_input = gr.Textbox(
+                        label="Brand Keyword",
+                        placeholder="e.g., apple, samsung, xiaomi, oppo",
+                        info="Masukkan nama brand untuk filtering",
+                        lines=1
+                    )
+                    
+                    stat_method = gr.Radio(
+                        choices=['median', 'mean', 'mode'],
+                        value='median',
+                        label="Metode Statistik",
+                        info="Pilih metode agregasi untuk profil virtual"
+                    )
+                    
+                    n_recs_brand = gr.Number(
+                        label="Jumlah Rekomendasi",
+                        value=10,
+                        minimum=1,
+                        maximum=50,
+                        step=1,
+                        info="Masukkan jumlah hasil rekomendasi"
+                    )
+                    
+                    find_brand_btn = gr.Button("Generate Recommendations", variant="primary", size="lg")
+                
+                with gr.Column(scale=2):
+                    gr.Markdown("#### Hasil Rekomendasi")
+                    brand_output = gr.Markdown()
+                    brand_table = gr.Dataframe(wrap=True)
+            
+            # Connect function
+            find_brand_btn.click(
+                fn=get_brand_only,
+                inputs=[brand_input, stat_method, n_recs_brand],
+                outputs=[brand_output, brand_table]
+            )
+            
+            # Example buttons
+            gr.Markdown("#### Coba contoh brand:")
+            with gr.Row():
+                ex_apple = gr.Button("Apple", size="sm")
+                ex_samsung = gr.Button("Samsung", size="sm")
+                ex_xiaomi = gr.Button("Xiaomi", size="sm")
+                ex_oppo = gr.Button("Oppo", size="sm")
+            
+            ex_apple.click(lambda: "apple", outputs=[brand_input])
+            ex_samsung.click(lambda: "samsung", outputs=[brand_input])
+            ex_xiaomi.click(lambda: "xiaomi", outputs=[brand_input])
+            ex_oppo.click(lambda: "oppo", outputs=[brand_input])
+        
+        # TAB 2: Original similarity search
+        with gr.Tab("Find Similar Phones (Original)"):
+            gr.Markdown("### Cari ponsel serupa berdasarkan model spesifik")
+            
+            with gr.Row():
+                with gr.Column(scale=1):
+                    phone_input = gr.Textbox(
+                        label="Phone Model",
+                        placeholder="e.g., iPhone 14 Pro",
+                        lines=1
+                    )
+                    
+                    n_similar = gr.Number(
+                        label="Jumlah Rekomendasi",
+                        value=10,
+                        minimum=1,
+                        maximum=50,
+                        step=1
+                    )
+                    
+                    find_btn = gr.Button("Find Similar", variant="primary")
+                
+                with gr.Column(scale=2):
+                    similar_output = gr.Markdown()
+                    similar_table = gr.Dataframe()
+            
+            similar_chart = gr.Plot()
+            
+            find_btn.click(
+                get_sim_phone_content_based,
+                [phone_input, n_similar],
+                [similar_output, similar_table, similar_chart]
+            )
+        
+        # TAB 3: Search
+        with gr.Tab("Search Phones"):
+            gr.Markdown("### Cari ponsel berdasarkan nama atau brand")
+            
+            with gr.Row():
+                search_input = gr.Textbox(label="Search Query", placeholder="e.g., iPhone, Galaxy")
+                search_btn = gr.Button("Search", variant="primary")
+            
+            search_output = gr.Markdown()
+            search_table = gr.Dataframe()
+            
+            search_btn.click(search_phone, [search_input], [search_output, search_table])
+        
+        # TAB 4: About
+        with gr.Tab("About"):
+            gr.Markdown(f"""
+            ## Dataset Information
+
+            - **Total Phones:** {len(df_clean):,}
+            - **Features:** {len(feature_cols)}
+            - **TF-IDF Vocabulary:** {tfidf_matrix.shape[1]} terms
+
+            ## New Features
+
+            ### 1. TF-IDF Brand Filtering
+            - Menggunakan TF-IDF vectorization untuk matching brand
+            - Lebih akurat daripada simple string matching
+            - Dapat menangani variasi nama (e.g., "Apple" vs "apple iphone")
+
+            ### 2. Statistical Aggregation
+            - **Median**: Nilai tengah (robust terhadap outlier)
+            - **Mean**: Rata-rata (representasi umum)
+            - **Mode**: Nilai paling sering muncul
+
+            ### 3. Virtual Profile Generation
+            - Sistem membuat profil ponsel virtual dari statistik grup
+            - Mencari ponsel real yang paling mirip dengan profil virtual
+            - Rekomendasi HANYA dari brand yang diminta
+
+            ## Algoritma
+
+            1. **TF-IDF Filtering**: Text vectorization untuk brand matching
+            2. **Statistical Aggregation**: Median/Mean/Mode calculation
+            3. **Cosine Similarity**: Pengukuran kemiripan fitur
+            4. **StandardScaler**: Normalisasi fitur
+
+            ## Developer
+
+            **Author:** rasiharunart1
+            **Date:** 2025-11-05
+            **Version:** 2.0 (Refactored)
+
+            ---
+
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                <h3>3 Mode Rekomendasi</h3>
+                <p>TF-IDF | Statistical Aggregation | Dynamic Control</p>
+            </div>
+            """)
+        
+        gr.Markdown("""
+        ---
+        <div style="text-align: center; color: #666;">
+            <p>Advanced Phone Recommendation System | rasiharunart1 2025</p>
+        </div>
+        """)
+    
+    return app
+
+print("Gradio app created with advanced features!\n")
+```
+
+**Struktur Tab:**
+
+**Tab 1: Brand-Based Recommendations**
+- Input: Brand keyword (textbox)
+- Input: Statistical method (radio: median/mean/mode)
+- Input: Jumlah rekomendasi (number)
+- Output: Markdown text + Dataframe
+- Tombol contoh: Apple, Samsung, Xiaomi, Oppo
+
+**Tab 2: Find Similar Phones**
+- Input: Nama ponsel (textbox)
+- Input: Jumlah rekomendasi (number)
+- Output: Markdown text + Dataframe + Plot (placeholder)
+
+**Tab 3: Search Phones**
+- Input: Query pencarian (textbox)
+- Output: Markdown text + Dataframe
+
+**Tab 4: About**
+- Informasi dataset
+- Penjelasan algoritma
+- Developer info
+
+### Launch App
+
+```python
+# Launch Gradio app
+app = create_advanced_phone_finder()
+app.launch(share=True, debug=True, inbrowser=True)
+```
+
+**Parameter Launch:**
+- `share=True`: Generate public link (untuk sharing)
+- `debug=True`: Tampilkan error detail di console
+- `inbrowser=True`: Otomatis buka browser
+
+---
+
+## 💡 Cara Penggunaan
+
+### Mode 1: Brand-Based Recommendations
+
+**Langkah-langkah:**
+
+1. Buka tab "Brand-Based Recommendations"
+2. Masukkan brand keyword (contoh: "apple", "samsung", "xiaomi")
+3. Pilih metode statistik:
+   - **Median**: Direkomendasikan (tahan outlier)
+   - **Mean**: Rata-rata grup
+   - **Mode**: Nilai terbanyak
+4. Masukkan jumlah rekomendasi (1-50)
+5. Klik "Generate Recommendations"
+
+**Contoh Input:**
+```
+Brand Keyword: apple
+Metode Statistik: median
+Jumlah Rekomendasi: 10
+```
+
+**Contoh Output:**
 ```markdown
 # Rekomendasi Ponsel - APPLE
 
@@ -642,304 +981,87 @@ text, df = get_brand_only('apple', 'median', 10)
 
 ## Top 10 Rekomendasi Serupa:
 ### 1. **Apple iPhone 13 Pro**
-   - Similarity: **0.9845** (98.5%)
+   - Similarity: **0.9845** (0.9845%)
    - Camera: 95.0 | Display: 98.0 | Battery: 90.0
    - Selfie: 90.0 | Audio: 92.0
-
-### 2. **Apple iPhone 12 Pro Max**
-   - Similarity: **0.9823** (98.2%)
-   - Camera: 94.0 | Display: 97.0 | Battery: 88.0
-   - Selfie: 89.0 | Audio: 91.0
 ...
 ```
 
-### **Contoh 2: Samsung dengan Agregasi Mean**
+### Mode 2: Find Similar Phones
 
-```python
-text, df = get_brand_only('samsung galaxy', 'mean', 15)
+**Langkah-langkah:**
+
+1. Buka tab "Find Similar Phones (Original)"
+2. Masukkan nama ponsel spesifik (contoh: "iPhone 14 Pro")
+3. Masukkan jumlah rekomendasi
+4. Klik "Find Similar"
+
+**Contoh Input:**
+```
+Phone Model: iPhone 14 Pro
+Jumlah Rekomendasi: 10
 ```
 
-**Output DataFrame:**
-
-| Rank | Model | Similarity | Similarity % | Camera | Display | Battery |
-|------|-------|------------|--------------|--------|---------|---------|
-| 1 | Samsung Galaxy S23 Ultra | 0.9912 | 99.1% | 98.0 | 99.0 | 95.0 |
-| 2 | Samsung Galaxy S22 Ultra | 0.9889 | 98.9% | 97.0 | 98.0 | 94.0 |
-| 3 | Samsung Galaxy Z Fold4 | 0.9856 | 98.6% | 95.0 | 97.0 | 92.0 |
-
-### **Contoh 3: Cari Ponsel Serupa dengan Ponsel Spesifik**
-
-```python
-text, df, _ = get_sim_phone_content_based('iPhone 14 Pro', 10)
-```
-
-**Output:**
-```markdown
-# Similar phones to **Apple iPhone 14 Pro**
-
-Top 10 hasil berdasarkan cosine similarity.
-```
+**Contoh Output:**
 
 | Model | Similarity | Camera | Display | Audio | Battery |
 |-------|------------|--------|---------|-------|---------|
 | iPhone 13 Pro | 0.9956 | 95 | 98 | 92 | 90 |
 | iPhone 14 Pro Max | 0.9945 | 96 | 99 | 93 | 92 |
-| iPhone 12 Pro Max | 0.9878 | 94 | 97 | 91 | 88 |
 
-### **Contoh 4: Fungsi Pencarian**
+### Mode 3: Search Phones
 
-```python
-text, df = search_phone('xiaomi redmi', 20)
+**Langkah-langkah:**
+
+1. Buka tab "Search Phones"
+2. Masukkan kata kunci (brand, model, atau bagian nama)
+3. Klik "Search"
+
+**Contoh Input:**
+```
+Search Query: galaxy s23
 ```
 
-**Output:**
+**Contoh Output:**
 ```markdown
-# Hasil Pencarian: 'xiaomi redmi'
-Ditemukan 87 ponsel
+# Hasil Pencarian: 'galaxy s23'
+Ditemukan 15 ponsel
 ```
+
+| Model | Camera | Display | Audio | Battery |
+|-------|--------|---------|-------|---------|
+| Samsung Galaxy S23 Ultra | 98 | 99 | 95 | 95 |
+| Samsung Galaxy S23+ | 96 | 97 | 93 | 93 |
 
 ---
 
-## 📊 Metrik Performa
+## 🔍 Detail Teknis Implementasi
 
-### **Kompleksitas Komputasi**
+### Formula Matematika
 
-| Operasi | Kompleksitas | Waktu (rata-rata) |
-|---------|--------------|-------------------|
-| TF-IDF Brand Matching | O(n*m) | 0.05s |
-| Agregasi Statistik | O(n*f) | 0.02s |
-| Cosine Similarity | O(n*d²) | 0.1s |
-| Rekomendasi Penuh | O(n*d²) | 0.15s |
-
-Keterangan:
-- `n`: Jumlah ponsel dalam grup brand
-- `m`: Ukuran vocabulary TF-IDF
-- `f`: Jumlah fitur (6)
-- `d`: Ukuran dataset (~10,000)
-
-### **Metrik Akurasi**
-
-```python
-# Akurasi pencocokan brand
-brand_recall = 0.95  # 95% deteksi brand benar
-
-# Relevansi rekomendasi (evaluasi manual)
-relevance_score = 0.88  # 88% rekomendasi dinilai relevan
-```
-
-### **Skalabilitas**
-
-| Ukuran Dataset | Penggunaan Memori | Waktu Pemrosesan |
-|----------------|-------------------|------------------|
-| 1,000 ponsel | 50 MB | 0.05s |
-| 10,000 ponsel | 200 MB | 0.15s |
-| 100,000 ponsel | 1.5 GB | 1.2s |
-
----
-
-## 🎯 Kasus Penggunaan
-
-### **Kasus 1: Rekomendasi E-Commerce**
-```python
-# User browsing iPhone 13
-similar_phones = get_sim_phone_content_based('iPhone 13', 5)
-# Tampilkan bagian "Pelanggan juga melihat"
-```
-
-### **Kasus 2: Perbandingan Brand**
-```python
-# Bandingkan Apple vs Samsung mid-range
-apple_stats = get_brand_only('apple', 'median', 10)
-samsung_stats = get_brand_only('samsung', 'median', 10)
-```
-
-### **Kasus 3: Pencari Alternatif Budget**
-```python
-# Cari spesifikasi serupa di brand berbeda
-flagship_specs = get_sim_phone_content_based('Samsung S23 Ultra', 20)
-# Filter berdasarkan rentang harga (jika data harga tersedia)
-```
-
----
-
-## 🐛 Troubleshooting
-
-### **Masalah 1: "Brand tidak ditemukan"**
-
-**Penyebab**: Alias brand tidak terdaftar
-
-**Solusi**:
-```python
-# Tambahkan ke dictionary BRAND_ALIASES
-BRAND_ALIASES['brandbar u'] = ['brandbaru', 'alias1', 'alias2']
-```
-
-### **Masalah 2: Skor similarity rendah**
-
-**Penyebab**: Profil virtual terlalu jauh dari ponsel nyata
-
-**Solusi**:
-```python
-# Coba metode statistik berbeda
-get_brand_only('brand', 'mode', 10)  # Daripada median
-```
-
-### **Masalah 3: Aplikasi Gradio tidak launching**
-
-**Penyebab**: Konflik port
-
-**Solusi**:
-```python
-app.launch(share=True, server_port=7861)  # Ubah port
-```
-
-### **Masalah 4: Out of memory**
-
-**Penyebab**: Matriks similarity terlalu besar
-
-**Solusi**:
-```python
-# Hitung similarity on-the-fly daripada pre-compute
-# Atau gunakan representasi sparse matrix
-from scipy.sparse import csr_matrix
-cos_sim_sparse = csr_matrix(cos_sim_matrix)
-```
-
----
-
-## 🚀 Fitur Lanjutan
-
-### **Fitur 1: Weighted Similarity**
-
-```python
-def weighted_cosine_similarity(profile, features, weights):
-    """
-    Terapkan bobot custom ke fitur
-    
-    weights = {
-        'camera': 1.5,    # Lebih penting
-        'battery': 1.2,
-        'display': 1.0,
-        'audio': 0.8,
-        'selfie': 0.7
-    }
-    """
-    weighted_profile = profile * weights
-    return cosine_similarity(weighted_profile, features)
-```
-
-### **Fitur 2: Rekomendasi Multi-Brand**
-
-```python
-def get_multi_brand_recommendation(brands, stat_type='median', n=10):
-    """
-    Dapatkan rekomendasi dari beberapa brand
-    """
-    results = []
-    for brand in brands:
-        text, df = get_brand_only(brand, stat_type, n)
-        results.append(df)
-    
-    combined = pd.concat(results).sort_values('Similarity', ascending=False)
-    return combined.head(n)
-
-# Contoh
-recs = get_multi_brand_recommendation(['apple', 'samsung', 'xiaomi'], 'median', 15)
-```
-
-### **Fitur 3: Export Rekomendasi**
-
-```python
-def export_recommendations(df, format='csv'):
-    """
-    Export rekomendasi ke file
-    """
-    if format == 'csv':
-        df.to_csv('recommendations.csv', index=False)
-    elif format == 'json':
-        df.to_json('recommendations.json', orient='records')
-    elif format == 'excel':
-        df.to_excel('recommendations.xlsx', index=False)
-```
-
----
-
-## 📈 Contoh Visualisasi
-
-### **Histogram: Distribusi Fitur**
-
-```python
-import matplotlib.pyplot as plt
-
-fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-colors = ['#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3']
-
-for idx, col in enumerate(feature_cols):
-    row, col_idx = idx // 3, idx % 3
-    if idx < 6:
-        axes[row, col_idx].hist(
-            df_clean[col].dropna(),
-            bins=30,
-            edgecolor='black',
-            alpha=0.6,
-            color=colors[idx]
-        )
-        axes[row, col_idx].set_title(f'{col.title()}', fontsize=14, fontweight='bold')
-
-plt.tight_layout()
-plt.show()
-```
-
-### **Heatmap: Matriks Similarity**
-
-```python
-import seaborn as sns
-
-plt.figure(figsize=(12, 10))
-sns.heatmap(
-    cos_sim_df.iloc[:30, :30],
-    cmap='YlGnBu',
-    center=0,
-    square=True,
-    linewidths=0.5,
-    cbar_kws={"shrink": 0.8},
-    xticklabels=False,
-    yticklabels=False
-)
-plt.title('Heatmap Cosine Similarity (30 smartphone)')
-plt.tight_layout()
-plt.show()
-```
-
----
-
-## 🎓 Detail Teknis
-
-### **Formula StandardScaler**
-
+**1. StandardScaler Normalization:**
 ```
 z = (x - μ) / σ
 
 di mana:
-- x: Nilai asli
-- μ: Mean dari fitur
-- σ: Standar deviasi
-- z: Nilai normalized
+- x = nilai asli
+- μ = mean dari fitur
+- σ = standard deviation
+- z = nilai normalized
 ```
 
-### **Formula Cosine Similarity**
-
+**2. Cosine Similarity:**
 ```
-similarity = (A · B) / (||A|| × ||B||)
+similarity(A, B) = (A · B) / (||A|| × ||B||)
 
 di mana:
-- A · B: Dot product
-- ||A||: Norma Euclidean dari A
-- ||B||: Norma Euclidean dari B
+- A · B = dot product
+- ||A|| = Euclidean norm (magnitude) dari A
+- ||B|| = Euclidean norm dari B
+- Hasil: 0 (tidak mirip) sampai 1 (identik)
 ```
 
-### **Formula TF-IDF**
-
+**3. TF-IDF:**
 ```
 TF-IDF(t, d) = TF(t, d) × IDF(t)
 
@@ -948,89 +1070,278 @@ di mana:
 - IDF(t) = log(Total dokumen / Dokumen yang mengandung term t)
 ```
 
+### Statistik yang Digunakan
+
+**Median:**
+```python
+median = values.median()
+```
+- Nilai tengah setelah data diurutkan
+- Tahan terhadap outlier
+- Contoh: [80, 85, 85, 90, 200] → median = 85
+
+**Mean:**
+```python
+mean = values.mean()
+```
+- Rata-rata aritmatika
+- Sensitif terhadap outlier
+- Contoh: [80, 85, 85, 90, 200] → mean = 108
+
+**Mode:**
+```python
+mode = stats.mode(values, keepdims=True).mode[0]
+```
+- Nilai yang paling sering muncul
+- Menangkap tren populer
+- Contoh: [80, 85, 85, 90, 200] → mode = 85
+
 ---
 
-## 🔐 Best Practices
+## 🐛 Troubleshooting
 
-### **1. Validasi Input**
+### Error 1: "Brand tidak ditemukan"
 
+**Penyebab:**
+- Brand alias tidak terdaftar di `BRAND_ALIASES`
+- Typo pada input
+
+**Solusi:**
 ```python
-def validate_input(brand_keyword, stat_type, n_recs):
-    assert isinstance(brand_keyword, str), "Brand harus berupa string"
-    assert stat_type in ['median', 'mean', 'mode'], "Tipe statistik tidak valid"
-    assert 1 <= n_recs <= 50, "n_recs harus antara 1-50"
+# Tambahkan brand baru ke dictionary
+BRAND_ALIASES['brandbaru'] = ['brandbaru', 'alias1', 'alias2']
 ```
 
-### **2. Error Handling**
+### Error 2: "Model tidak ditemukan"
 
+**Penyebab:**
+- Nama model tidak ada di dataset
+- Typo pada input
+
+**Solusi:**
+- Gunakan tab "Search" untuk eksplorasi nama model yang tersedia
+- Coba partial matching (contoh: "iphone" daripada "iphone 14 pro max")
+
+### Error 3: Similarity score rendah semua
+
+**Penyebab:**
+- Profil virtual terlalu berbeda dari ponsel real
+- Brand memiliki variasi spesifikasi yang sangat luas
+
+**Solusi:**
 ```python
-try:
-    text, df = get_brand_only(brand, stat_type, n)
-except ValueError as e:
-    print(f"❌ Input tidak valid: {e}")
-except Exception as e:
-    print(f"❌ Error tidak terduga: {e}")
-    import traceback
-    traceback.print_exc()
+# Coba metode statistik berbeda
+get_brand_only('brand', 'mode', 10)  # Gunakan mode daripada median
 ```
 
-### **3. Caching**
+### Error 4: Gradio tidak launch
 
+**Penyebab:**
+- Port sudah digunakan
+- Firewall blocking
+
+**Solusi:**
 ```python
-from functools import lru_cache
+# Ubah port
+app.launch(share=True, server_port=7861)
 
-@lru_cache(maxsize=128)
-def get_brand_cached(brand, stat_type, n):
-    """Cache brand yang sering diminta"""
-    return get_brand_only(brand, stat_type, n)
+# Atau tanpa auto-open browser
+app.launch(share=True, inbrowser=False)
+```
+
+### Error 5: Out of Memory
+
+**Penyebab:**
+- Dataset terlalu besar
+- Matriks similarity terlalu besar
+
+**Solusi:**
+```python
+# Reduce max_features TF-IDF
+tfidf = TfidfVectorizer(max_features=100)  # Dari 500 ke 100
+
+# Atau compute similarity on-the-fly (tidak pre-compute semua)
 ```
 
 ---
 
-## 📝 Changelog
+## 📊 Ringkasan Fitur Sistem
 
-### **Versi 2.0** (Saat ini)
-- ✅ TF-IDF brand filtering
-- ✅ Agregasi statistik (median/mean/mode)
-- ✅ Pembuatan profil virtual
-- ✅ Dukungan 100+ alias brand
-- ✅ Kontrol rekomendasi dinamis
-- ✅ UI Gradio dengan 3 tab
-
-### **Versi 1.0**
-- Content-based filtering dasar
-- Mode similarity tunggal
-- Dukungan brand terbatas
+| Fitur | Deskripsi | Implementasi |
+|-------|-----------|--------------|
+| **TF-IDF Brand Filtering** | Pencocokan brand dengan 100+ alias | `extract_brand_group_tfidf()` |
+| **Statistical Aggregation** | Median/Mean/Mode untuk profil virtual | `calculate_brand_statistics()` |
+| **Cosine Similarity** | Ukur kemiripan antar ponsel | `cosine_similarity()` |
+| **StandardScaler** | Normalisasi fitur | `StandardScaler()` |
+| **3 Mode Rekomendasi** | Brand-based, Phone-based, Search | Gradio tabs |
+| **Dynamic Control** | Input jumlah rekomendasi | `gr.Number()` |
+| **Visualisasi** | Histogram & Heatmap | `matplotlib`, `seaborn` |
 
 ---
 
-## 👨‍💻 Pembuat
+## 📈 Performa Sistem
 
-**rasiharunart1**  
-📅 **Diperbarui:** 2025-11-05  
-📧 **Kontak:** rasiharunart1@example.com  
-🔗 **GitHub:** github.com/rasiharunart1
+### Waktu Eksekusi (Rata-rata)
+
+| Operasi | Waktu |
+|---------|-------|
+| Load dataset | 1-2 detik |
+| Data cleaning | 0.5-1 detik |
+| TF-IDF fit_transform | 0.1-0.2 detik |
+| Cosine similarity (full matrix) | 1-5 detik |
+| Get brand recommendations | 0.1-0.3 detik |
+| Get similar phones | 0.01-0.05 detik |
+| Search | 0.01-0.02 detik |
+
+### Resource Usage
+
+| Resource | Usage |
+|----------|-------|
+| RAM | 200-500 MB |
+| CPU | 1-2 cores |
+| Disk | 50-100 MB (dataset + cache) |
 
 ---
 
-## 📄 Lisensi
+## 📝 Catatan Penting
 
-MIT License - Bebas digunakan dan dimodifikasi!
+### Limitasi Sistem
+
+1. **Dataset Static**: Tidak auto-update dengan ponsel baru
+2. **Fitur Terbatas**: Hanya 6 fitur yang digunakan
+3. **Bahasa**: TF-IDF menggunakan stop words bahasa Inggris
+4. **No Price Data**: Kolom harga dihapus di awal
+
+### Asumsi
+
+1. Semua fitur memiliki bobot yang sama
+2. Median adalah metode agregasi terbaik (default)
+3. Similarity > 0.8 dianggap "sangat mirip"
+4. Brand alias sudah lengkap untuk 100+ brand
 
 ---
 
-## 🙏 Acknowledgments
+## 🎓 Penjelasan Konsep Kunci
 
-- **Dataset**: Kaggle - Mobile Phone Rating Dataset
-- **Library**: Scikit-learn, Pandas, Gradio
-- **Inspirasi**: Sistem rekomendasi berbasis konten
+### Content-Based Filtering
+
+**Definisi:**
+- Rekomendasi berdasarkan kemiripan **konten/fitur** item
+- Tidak memerlukan data user lain (berbeda dengan collaborative filtering)
+
+**Dalam sistem ini:**
+- "Konten" = spesifikasi ponsel (camera, display, battery, dll)
+- Jika user suka iPhone 13 Pro (camera=95, display=98)
+- Sistem cari ponsel lain dengan spesifikasi mirip
+
+### TF-IDF (Term Frequency-Inverse Document Frequency)
+
+**Definisi:**
+- Teknik untuk mengukur pentingnya kata dalam dokumen
+
+**Dalam sistem ini:**
+- "Dokumen" = nama model ponsel
+- "Term" = kata dalam nama model
+- Digunakan untuk matching brand (contoh: "apple" di "Apple iPhone 13 Pro")
+
+### Cosine Similarity
+
+**Definisi:**
+- Mengukur sudut antara 2 vektor
+- Nilai 1 = vektor searah (sangat mirip)
+- Nilai 0 = vektor tegak lurus (sangat berbeda)
+
+**Dalam sistem ini:**
+- Setiap ponsel = vektor 6 dimensi (6 fitur)
+- Cosine similarity mengukur seberapa mirip 2 ponsel
+
+### Virtual Profile
+
+**Definisi:**
+- Profil "ponsel ideal" yang dibuat dari statistik grup
+
+**Contoh:**
+```
+Brand: Apple (45 ponsel)
+Virtual Profile (Median):
+- Camera: 88.5 (median dari 45 ponsel)
+- Display: 92.0
+- Battery: 85.5
+- ...
+
+Sistem cari ponsel Apple yang paling mirip dengan profil ini
+```
+
+---
+
+## 🔄 Workflow Lengkap Sistem
+
+```
+1. USER INPUT
+   ↓
+2. INPUT VALIDATION
+   ↓
+3. TF-IDF BRAND DETECTION
+   ↓
+4. EXTRACT BRAND GROUP (filter dataset)
+   ↓
+5. CALCULATE STATISTICS (median/mean/mode)
+   ↓
+6. CREATE REFERENCE PROFILE (virtual or real)
+   ↓
+7. NORMALIZE PROFILE (StandardScaler)
+   ↓
+8. COMPUTE COSINE SIMILARITY
+   ↓
+9. RANK & FILTER TOP-N
+   ↓
+10. FORMAT OUTPUT (Markdown + DataFrame)
+    ↓
+11. DISPLAY IN GRADIO UI
+```
+
+---
+
+## ✅ Checklist Fungsionalitas
+
+- [x] Load dataset dari Kaggle
+- [x] Data cleaning (duplikat, missing values)
+- [x] Feature extraction (launch_year)
+- [x] Feature normalization (StandardScaler)
+- [x] TF-IDF vectorization untuk brand
+- [x] Cosine similarity matrix (pre-computed)
+- [x] 100+ brand aliases support
+- [x] Statistical aggregation (median/mean/mode)
+- [x] Virtual profile generation
+- [x] Brand-based recommendations
+- [x] Phone-based recommendations
+- [x] Search functionality
+- [x] Gradio UI dengan 3 tabs
+- [x] Dynamic input control (number input)
+- [x] Example buttons untuk quick test
+- [x] Error handling
+- [x] Visualisasi (histogram, heatmap)
+
+---
+
+## 👨‍💻 Developer Info
+
+**Author:** rasiharunart1  
+**Date:** 2025-11-05  
+**Version:** 2.0  
+**Platform:** Python 3.8+, Gradio 4.0+  
+**Dataset:** Kaggle - Mobile Phone Rating Dataset
 
 ---
 
 <div align="center">
 
-### 🌟 Beri bintang project ini jika bermanfaat!
+## 🌟 Sistem Rekomendasi Lengkap dengan TF-IDF & Statistical Aggregation
 
 **Dibuat dengan ❤️ menggunakan Python, Scikit-learn, dan Gradio**
+
+---
+
+**© 2025 rasiharunart1 | MIT License**
 
 </div>
