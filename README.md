@@ -611,7 +611,7 @@ def get_brand_only(brand_keyword, stat_type='median', n_recomendations=10):
 - Gunakan spesifikasi asli ponsel tersebut
 - Cari ponsel lain dalam brand yang mirip
 
-**Mode 2: BRAND STATISTICS (Virtual Profile)**
+**Mode 2: BRAND STATISTICS (Virtual Profile (virtual specs))**
 - Jika input adalah nama brand
 - Buat profil virtual dari median/mean/mode grup
 - Cari ponsel dalam brand yang paling mirip profil virtual
